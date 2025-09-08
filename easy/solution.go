@@ -1,6 +1,15 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	ErrNextFailed    = errors.New("next failed")
+	ErrProcessFailed = errors.New("process failed")
+	ErrCommitFailed  = errors.New("commit failed")
+)
 
 type Producer interface {
 	// Next возвращает:
@@ -25,7 +34,7 @@ func Pipe(p Producer, c Consumer, maxItems int) error {
 	for {
 		items, cookie, err := p.Next()
 		if err != nil {
-			return fmt.Errorf("next error: %w", err)
+			return fmt.Errorf("%w: %v", ErrNextFailed, err)
 		}
 
 		// Если cookie == -1, это конец данных
@@ -33,11 +42,11 @@ func Pipe(p Producer, c Consumer, maxItems int) error {
 			// Обрабатываем оставшиеся данные в буфере
 			if len(buf) > 0 {
 				if err := c.Process(buf); err != nil {
-					return fmt.Errorf("process error: %w", err)
+					return fmt.Errorf("%w: %v", ErrProcessFailed, err)
 				}
 				for _, ck := range cookies {
 					if err := p.Commit(ck); err != nil {
-						return fmt.Errorf("commit error: %w", err)
+						return fmt.Errorf("%w: %v", ErrCommitFailed, err)
 					}
 				}
 			}
@@ -48,11 +57,11 @@ func Pipe(p Producer, c Consumer, maxItems int) error {
 		if len(buf)+len(items) > maxItems {
 			// Буфер переполнен, обрабатываем текущие данные
 			if err := c.Process(buf); err != nil {
-				return fmt.Errorf("process error: %w", err)
+				return fmt.Errorf("%w: %v", ErrProcessFailed, err)
 			}
 			for _, cookie := range cookies {
 				if err := p.Commit(cookie); err != nil {
-					return fmt.Errorf("commit error: %w", err)
+					return fmt.Errorf("%w: %v", ErrCommitFailed, err)
 				}
 			}
 			// Сбрасываем буферы

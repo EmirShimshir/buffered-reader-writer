@@ -2,8 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"golang.org/x/sync/errgroup"
+)
+
+var (
+	ErrNextFailed    = errors.New("next failed")
+	ErrProcessFailed = errors.New("process failed")
+	ErrCommitFailed  = errors.New("commit failed")
 )
 
 type Producer interface {
@@ -59,7 +66,7 @@ func runNext(ctx context.Context, p Producer, maxItems int, batchCh chan<- batch
 		}
 		items, cookie, err := p.Next()
 		if err != nil {
-			return fmt.Errorf("next error: %w", err)
+			return fmt.Errorf("%w: %v", ErrNextFailed, err)
 		}
 		if cookie == -1 {
 			if len(buf) > 0 {
@@ -94,7 +101,7 @@ func runProcess(ctx context.Context, c Consumer, batchCh <-chan batch, cookiesCh
 			return nil
 		}
 		if err := c.Process(batch.buf); err != nil {
-			return fmt.Errorf("process error: %w", err)
+			return fmt.Errorf("%w: %v", ErrProcessFailed, err)
 		}
 		for _, cookie := range batch.cookies {
 			if err := writeChanWithContext(ctx, cookiesCh, cookie); err != nil {
@@ -115,7 +122,7 @@ func runCommit(ctx context.Context, p Producer, cookiesCh <-chan int) error {
 			return nil
 		}
 		if err := p.Commit(cookie); err != nil {
-			return fmt.Errorf("commit error: %w", err)
+			return fmt.Errorf("%w: %v", ErrCommitFailed, err)
 		}
 	}
 
