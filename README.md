@@ -20,7 +20,7 @@
 
 - Условие - [тут](impossible/task.md)
 - Решение - [тут](impossible/solution.go)
-- 
+
 ## Ultimate  
 
 - Условие - [тут](ultimate/task.md)
