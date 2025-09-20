@@ -51,7 +51,7 @@ func TestPipe_HappyPathSingleBatch(t *testing.T) {
 	producer.On("Commit", 1).Return(nil).Once()
 
 	// Producer возвращает конец данных
-	producer.On("Next").Return([]any{}, -1, nil).Once()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Once()
 
 	err := Pipe(producer, consumer, maxItems)
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestPipe_HappyPathMultipleBatches(t *testing.T) {
 	producer.On("Commit", 2).Return(nil).Once()
 
 	// Producer возвращает конец данных
-	producer.On("Next").Return([]any{}, -1, nil).Once()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Once()
 
 	// Consumer получает оставшиеся данные
 	consumer.On("Process", batch3).Return(nil).Once()
@@ -117,7 +117,7 @@ func TestPipe_ExactBufferSize(t *testing.T) {
 	producer.On("Commit", 1).Return(nil).Once()
 
 	// Конец данных
-	producer.On("Next").Return([]any{}, -1, nil).Once()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Once()
 
 	err := Pipe(producer, consumer, maxItems)
 	require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestPipe_EmptyData(t *testing.T) {
 	maxItems := 10
 
 	// Сразу конец данных
-	producer.On("Next").Return([]any{}, -1, nil).Once()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Once()
 
 	err := Pipe(producer, consumer, maxItems)
 	require.NoError(t, err)
@@ -172,7 +172,7 @@ func TestPipe_ConsumerError(t *testing.T) {
 	data2 := []any{"item3"}
 	producer.On("Next").Return(data2, 2, nil).Once()
 
-	producer.On("Next").Return([]any{}, -1, nil).Maybe()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Maybe()
 
 	processErr := errors.New("consumer error")
 	consumer.On("Process", data1).Return(processErr).Once()
@@ -195,7 +195,7 @@ func TestPipe_ConsumerEndError(t *testing.T) {
 	producer.On("Next").Return(data1, 1, nil).Once()
 
 	data2 := []any{}
-	producer.On("Next").Return(data2, -1, nil).Once()
+	producer.On("Next").Return(data2, 0, ErrEofCommitCookie).Once()
 
 	processErr := errors.New("consumer error")
 	consumer.On("Process", data1).Return(processErr).Once()
@@ -220,7 +220,7 @@ func TestPipe_CommitError(t *testing.T) {
 	data2 := []any{"item3"}
 	producer.On("Next").Return(data2, 2, nil).Once()
 
-	producer.On("Next").Return([]any{}, -1, nil).Maybe()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Maybe()
 
 	consumer.On("Process", data1).Return(nil).Once()
 
@@ -248,7 +248,7 @@ func TestPipe_MultipleCommitsWithError(t *testing.T) {
 
 	producer.On("Next").Return(batch1, 1, nil).Once()
 	producer.On("Next").Return(batch2, 2, nil).Once()
-	producer.On("Next").Return([]any{}, -1, nil).Once()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Once()
 
 	expectedData := []any{"item1", "item2", "item3", "item4"}
 	consumer.On("Process", expectedData).Return(nil).Once()
@@ -283,7 +283,7 @@ func TestPipe_SingleItemMultipleBatches(t *testing.T) {
 	for i := 0; i < len(batches); i++ {
 		producer.On("Next").Return(batches[i], cookies[i], nil).Once()
 	}
-	producer.On("Next").Return([]any{}, -1, nil).Once()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Once()
 
 	// Ожидаемые вызовы Process
 	consumer.On("Process", []any{"item1", "item2"}).Return(nil).Once()
@@ -307,7 +307,7 @@ func TestPipe_NoDataButWithCookieMinusOne(t *testing.T) {
 	maxItems := 10
 
 	// Producer сразу возвращает cookie = -1 без данных
-	producer.On("Next").Return([]any{}, -1, nil).Once()
+	producer.On("Next").Return([]any{}, 0, ErrEofCommitCookie).Once()
 
 	err := Pipe(producer, consumer, maxItems)
 	require.NoError(t, err)

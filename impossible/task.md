@@ -29,7 +29,7 @@ Commit(cookie int) error
 ```
 
 Источник:
-* При отсутствии новых данных возвращает `cookie` со значением `-1`.
+* При отсутствии новых данных возвращает ошибку `ErrEofCommitCookie`.
 * Источник никогда не возвращает более `maxItems` записей за один вызов `next`.
 * В рамках одной "сессии" (одного вызова функции `pipe`) источник каждый раз возвращает новые данные на каждый вызов `next`.
 * После перезапуска источник начнет с прошлой "подтвержденной" позиции, задаваемой `cookie`.
@@ -80,6 +80,8 @@ type Consumer interface {
 // Process обрабатывает переданные элементы
 Process(items []any) error
 }
+
+var ErrEofCommitCookie = errors.New("no more data")
 
 func Pipe(p Producer, c Consumer, maxItems int) error {
 // ... your code

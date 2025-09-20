@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	ErrNextFailed    = errors.New("next failed")
-	ErrProcessFailed = errors.New("process failed")
-	ErrCommitFailed  = errors.New("commit failed")
+	ErrEofCommitCookie = errors.New("no more data")
+	ErrNextFailed      = errors.New("next failed")
+	ErrProcessFailed   = errors.New("process failed")
+	ErrCommitFailed    = errors.New("commit failed")
 )
 
 type Producer interface {
@@ -118,10 +119,7 @@ func runNext(cancelCh <-chan struct{}, p Producer, maxItems int, batchCh chan<- 
 			return nil
 		default:
 			items, cookie, err := p.Next()
-			if err != nil {
-				return err
-			}
-			if cookie == -1 {
+			if errors.Is(err, ErrEofCommitCookie) {
 				if len(buf) > 0 {
 					if ok := writeChanWithCancel(cancelCh, batchCh, batch{buf: buf, cookies: cookies}); !ok {
 						return nil
@@ -129,6 +127,10 @@ func runNext(cancelCh <-chan struct{}, p Producer, maxItems int, batchCh chan<- 
 				}
 				return nil
 			}
+			if err != nil {
+				return err
+			}
+
 			if len(buf)+len(items) > maxItems {
 				if ok := writeChanWithCancel(cancelCh, batchCh, batch{buf: buf, cookies: cookies}); !ok {
 					return nil

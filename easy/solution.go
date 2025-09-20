@@ -6,9 +6,10 @@ import (
 )
 
 var (
-	ErrNextFailed    = errors.New("next failed")
-	ErrProcessFailed = errors.New("process failed")
-	ErrCommitFailed  = errors.New("commit failed")
+	ErrEofCommitCookie = errors.New("no more data")
+	ErrNextFailed      = errors.New("next failed")
+	ErrProcessFailed   = errors.New("process failed")
+	ErrCommitFailed    = errors.New("commit failed")
 )
 
 type Producer interface {
@@ -33,12 +34,7 @@ func Pipe(p Producer, c Consumer, maxItems int) error {
 
 	for {
 		items, cookie, err := p.Next()
-		if err != nil {
-			return fmt.Errorf("%w: %v", ErrNextFailed, err)
-		}
-
-		// Если cookie == -1, это конец данных
-		if cookie == -1 {
+		if errors.Is(err, ErrEofCommitCookie) {
 			// Обрабатываем оставшиеся данные в буфере
 			if len(buf) > 0 {
 				if err := c.Process(buf); err != nil {
@@ -51,6 +47,9 @@ func Pipe(p Producer, c Consumer, maxItems int) error {
 				}
 			}
 			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrNextFailed, err)
 		}
 
 		// Проверяем, помещаются ли новые данные в буфер

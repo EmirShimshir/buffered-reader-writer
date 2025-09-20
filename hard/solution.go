@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	ErrNextFailed    = errors.New("next failed")
-	ErrProcessFailed = errors.New("process failed")
-	ErrCommitFailed  = errors.New("commit failed")
+	ErrEofCommitCookie = errors.New("no more data")
+	ErrNextFailed      = errors.New("next failed")
+	ErrProcessFailed   = errors.New("process failed")
+	ErrCommitFailed    = errors.New("commit failed")
 )
 
 type Producer interface {
@@ -65,10 +66,7 @@ func runNext(ctx context.Context, p Producer, maxItems int, batchCh chan<- batch
 			return ctx.Err()
 		}
 		items, cookie, err := p.Next()
-		if err != nil {
-			return fmt.Errorf("%w: %v", ErrNextFailed, err)
-		}
-		if cookie == -1 {
+		if errors.Is(err, ErrEofCommitCookie) {
 			if len(buf) > 0 {
 				if err := writeChanWithContext(ctx, batchCh, batch{buf: buf, cookies: cookies}); err != nil {
 					return err
@@ -76,6 +74,10 @@ func runNext(ctx context.Context, p Producer, maxItems int, batchCh chan<- batch
 			}
 			return nil
 		}
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrNextFailed, err)
+		}
+
 		if len(buf)+len(items) > maxItems {
 			if err := writeChanWithContext(ctx, batchCh, batch{buf: buf, cookies: cookies}); err != nil {
 				return err
